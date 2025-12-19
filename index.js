@@ -1,43 +1,30 @@
-const express = require("express");
-const fetch = (...args) =>
-  import("node-fetch").then(({ default: fetch }) => fetch(...args));
+import express from "express";
+import fetch from "node-fetch";
 
 const app = express();
 app.use(express.json());
 
-app.post("/webhook", async (req, res) => {
+app.post("/fedapay", async (req, res) => {
   try {
-    const t = req.body.transaction;
+    console.log("Webhook reçu:", req.body);
 
-    // Toujours répondre 200 à FedaPay
-    if (!t) {
-      return res.json({ received: true });
-    }
+    await fetch("https://ifiaas.ct.ws/dmxConnect/api/fedapay/confirm.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-RELAY": "SECRET123"
+      },
+      body: JSON.stringify(req.body)
+    });
 
-    await fetch(
-      "https://ifiaas.ct.ws/dmxConnect/api/fedapay/confirm.php",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-RELAY": process.env.RELAY_SECRET
-        },
-        body: JSON.stringify({
-          transaction_id: t.id,
-          amount: t.amount,
-          status: t.status
-        })
-      }
-    );
-
-    res.json({ received: true });
-  } catch (err) {
-    console.error(err);
-    res.json({ received: true });
+    res.status(200).json({ received: true });
+  } catch (e) {
+    console.error("Erreur relay:", e);
+    res.status(200).json({ received: true });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log("Render webhook prêt sur port", PORT)
-);
+app.listen(PORT, () => {
+  console.log("Render webhook actif sur port", PORT);
+});
